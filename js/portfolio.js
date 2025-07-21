@@ -2,7 +2,8 @@ async function cargarProyectosVisitante() {
   const galeria = document.getElementById('galeriaVisitante');
   galeria.innerHTML = '';
   try {
-    const res = await fetch('/api/proyectos');
+    const res = await fetch('/data/proyectos.json');
+
     const proyectos = await res.json();
 
     proyectos.forEach(p => {

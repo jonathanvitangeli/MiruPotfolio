@@ -34,7 +34,7 @@ function volverAlInicio() {
 }
 
 async function cargarProyectosAdmin() {
-  const res = await fetch('/api/proyectos');
+  const res = await fetch('/data/proyectos.json');
   proyectosGlobal = await res.json();
   renderizarProyectos(proyectosGlobal);
 }

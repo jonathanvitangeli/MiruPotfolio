@@ -103,13 +103,15 @@ app.delete('/api/proyectos/:id', (req, res) => {
   res.status(204).send();
 });
 
-app.post('/api/login', express.json(), (req, res) => {
+app.post('/api/login', (req, res) => {
   const { password } = req.body;
+  console.log('Password recibido:', password);
+  console.log('Password esperado:', process.env.ADMIN_PASSWORD);
+
   if (password === process.env.ADMIN_PASSWORD) {
-    res.json({ success: true });
-  } else {
-    res.status(401).json({ success: false, error: 'Contraseña incorrecta' });
+    return res.status(200).json({ success: true });
   }
+  res.status(401).json({ success: false, error: 'Contraseña incorrecta' });
 });
 
 app.post('/api/upload', upload.array('imagenes', 10), (req, res) => {

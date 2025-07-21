@@ -8,7 +8,7 @@ async function cargarDetalleProyecto() {
   }
 
   try {
-    const res = await fetch('/api/proyectos');
+    const res = await fetch('/data/proyectos.json');
     const proyectos = await res.json();
     const proyecto = proyectos.find(p => p.id === id);
 
