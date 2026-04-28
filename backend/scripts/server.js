@@ -11,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = 8081;
 
 // === Rutas absolutas ===
 const ROOT_PATH = path.resolve(__dirname, '../..');
@@ -141,3 +141,35 @@ app.use((req, res) => {
 
 // Inicio del servidor
 app.listen(PORT, () => console.log(`✅ Servidor corriendo en http://localhost:${PORT}`));
+app.post('/api/proyectos/reordenar', (req, res) => {
+  const nuevosProyectos = req.body;
+
+  console.log("📥 Recibido orden desde admin:");
+  nuevosProyectos.forEach((p, i) => {
+    console.log(`  ${i + 1}. ${p.descripcion} (id: ${p.id})`);
+  });
+
+  if (!Array.isArray(nuevosProyectos)) {
+    return res.status(400).json({ error: 'Formato inválido' });
+  }
+
+  try {
+    fs.writeFileSync(DATA_PATH, JSON.stringify(nuevosProyectos, null, 2));
+    console.log("✅ JSON sobrescrito correctamente.");
+    res.status(200).json({ mensaje: 'Orden actualizado correctamente' });
+  } catch (err) {
+    console.error('❌ Error al escribir el archivo:', err);
+    res.status(500).json({ error: 'Error al guardar el nuevo orden' });
+  }
+});
+
+app.put('/api/proyectos', (req, res) => {
+  fs.writeFileSync('./data/proyectos.json', JSON.stringify(req.body, null, 2));
+  res.send({ success: true });
+});
+// Express - server.js
+app.get('/data/proyectos', (req, res) => {
+  const data = fs.readFileSync('./data/proyectos.json');
+  res.json(JSON.parse(data));
+});
+

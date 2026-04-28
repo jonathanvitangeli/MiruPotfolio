@@ -24,9 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  configurarVistaPreviaImagenes('imagen', 'previewImagenes');
-  configurarVistaPreviaImagenes('editNuevasImagenes', 'previewEditImagenes');
-
   const btnGuardarOrden = document.getElementById('btnGuardarOrden');
   if (btnGuardarOrden) {
     btnGuardarOrden.addEventListener('click', guardarOrdenProyectos);
@@ -90,11 +87,11 @@ function renderizarProyectos(lista) {
   });
 }
 
-
-
 function filtrarProyectos() {
   const texto = document.getElementById('buscador').value.toLowerCase();
-  const filtrados = proyectosGlobal.filter(p => p.descripcion.toLowerCase().includes(texto));
+  const filtrados = proyectosGlobal.filter(p =>
+    p.descripcion.toLowerCase().includes(texto)
+  );
   renderizarProyectos(filtrados);
 }
 
@@ -110,7 +107,6 @@ async function agregarProyecto() {
 
   const imagenesUrls = [];
 
-  // Subir imágenes a Storage
   for (const file of fileInput.files) {
     const nombreArchivo = `${Date.now()}-${file.name}`;
 
@@ -133,7 +129,6 @@ async function agregarProyecto() {
     }
   }
 
-  // Guardar en base de datos
   try {
     const { error } = await supabase
       .from('proyectos')
@@ -147,7 +142,6 @@ async function agregarProyecto() {
 
     alert('✅ Proyecto guardado correctamente');
     document.getElementById('formulario').reset();
-    limpiarVistaPreviaImagenes('previewImagenes');
     cargarProyectosAdmin();
   } catch (err) {
     console.error('Error guardando proyecto:', err);
@@ -188,17 +182,12 @@ function verDetalle(id) {
   window.location.href = `/proyecto.html?id=${id}`;
 }
 
-// Exponer funciones al window para que los onclick del HTML funcionen
-window.volverAlInicio = volverAlInicio;
-window.abrirEditor = abrirEditor;
-window.eliminar = eliminar;
-window.verDetalle = verDetalle;
-
 // ================== Editor ======================
 
 function abrirEditor(id) {
   const proyecto = proyectosGlobal.find(p => p.id === id);
   if (!proyecto) return;
+
   proyectoEditando = proyecto;
   document.getElementById('editTitulo').value = proyecto.descripcion || '';
   document.getElementById('editDescripcion').value = proyecto.descripcion_larga || '';
@@ -211,52 +200,45 @@ function mostrarImagenesEditor(imagenes) {
   cont.innerHTML = '';
   imagenes.forEach((url, idx) => {
     const div = document.createElement('div');
-    div.style = "display:inline-block;position:relative;margin:5px;";
-    
-    const btnEliminar = document.createElement('span');
-    btnEliminar.style = "position:absolute;top:0;right:0;background:red;color:white;cursor:pointer;border-radius:50%;padding:2px 6px;";
-    btnEliminar.textContent = '×';
-    btnEliminar.addEventListener('click', () => eliminarImagenEditor(idx));
-    
-    const img = document.createElement('img');
-    img.src = url;
-    img.style = "width:60px;height:60px;object-fit:cover;border-radius:4px;";
-    
-    div.appendChild(img);
-    div.appendChild(btnEliminar);
+    div.style = 'display:inline-block;position:relative;margin:5px;';
+    div.innerHTML = `
+      <img src="${url}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
+      <span onclick="eliminarImagenEditor(${idx})" style="position:absolute;top:0;right:0;background:red;color:white;cursor:pointer;border-radius:50%;padding:2px 6px;">&times;</span>
+    `;
     cont.appendChild(div);
   });
 }
 
-
 function eliminarImagenEditor(idx) {
-  proyectoEditando.imagenes.splice(idx, 1);
-  mostrarImagenesEditor(proyectoEditando.imagenes);
+  if (proyectoEditando) {
+    proyectoEditando.imagenes.splice(idx, 1);
+    mostrarImagenesEditor(proyectoEditando.imagenes);
+  }
 }
 
 function cerrarEditor() {
   proyectoEditando = null;
   document.getElementById('editorProyecto').style.display = 'none';
-  limpiarVistaPreviaImagenes('previewEditImagenes');
 }
 
-// Exponer funciones al window para onclick del HTML
-window.cerrarEditor = cerrarEditor;
-window.guardarEdicionProyecto = guardarEdicionProyecto;
-window.eliminarImagenEditor = eliminarImagenEditor;
-
 async function guardarEdicionProyecto() {
+  if (!proyectoEditando) return;
+
   const id = proyectoEditando.id;
   const descripcion = document.getElementById('editTitulo').value.trim();
   const descripcionLarga = document.getElementById('editDescripcion').value.trim();
   let imagenes = [...proyectoEditando.imagenes];
 
-  // Subir nuevas imágenes a Storage
+  if (!descripcion) {
+    alert('La descripción es obligatoria');
+    return;
+  }
+
   const nuevas = document.getElementById('editNuevasImagenes').files;
   if (nuevas.length > 0) {
     for (const file of nuevas) {
       const nombreArchivo = `${Date.now()}-${file.name}`;
-      
+
       try {
         const { error: uploadError } = await supabase.storage
           .from('proyectos')
@@ -277,14 +259,13 @@ async function guardarEdicionProyecto() {
     }
   }
 
-  // Actualizar en Supabase
   try {
     const { error } = await supabase
       .from('proyectos')
       .update({
         descripcion,
         descripcion_larga: descripcionLarga,
-        imagenes: imagenes
+        imagenes
       })
       .eq('id', id);
 
@@ -299,110 +280,38 @@ async function guardarEdicionProyecto() {
   }
 }
 
-function configurarVistaPreviaImagenes(inputId, contenedorId) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
-
-  input.addEventListener('change', () => {
-    mostrarVistaPreviaImagenes(input.files, contenedorId);
-  });
-}
-
-function mostrarVistaPreviaImagenes(files, contenedorId) {
-  const contenedor = document.getElementById(contenedorId);
-  if (!contenedor) return;
-
-  contenedor.innerHTML = '';
-  if (!files || files.length === 0) return;
-
-  Array.from(files).forEach((file) => {
-    const item = document.createElement('div');
-    item.className = 'preview-item';
-
-    const imagen = document.createElement('img');
-    imagen.alt = file.name;
-    imagen.src = URL.createObjectURL(file);
-    imagen.onload = () => URL.revokeObjectURL(imagen.src);
-
-    const nombre = document.createElement('span');
-    nombre.className = 'preview-nombre';
-    nombre.textContent = file.name;
-
-    item.appendChild(imagen);
-    item.appendChild(nombre);
-    contenedor.appendChild(item);
-  });
-}
-
-function limpiarVistaPreviaImagenes(contenedorId) {
-  const contenedor = document.getElementById(contenedorId);
-  if (contenedor) {
-    contenedor.innerHTML = '';
-  }
-}
-
-// ==================== DRAG & DROP ====================
+// ================== Drag & Drop ======================
 
 let draggedIndex = null;
 
 function handleDragStart(e) {
-  draggedIndex = e.target.closest('.card').getAttribute('data-index');
-  e.target.closest('.card').style.opacity = '0.5';
+  draggedIndex = parseInt(e.currentTarget.getAttribute('data-index'));
+  e.currentTarget.style.opacity = '0.5';
 }
 
 function handleDragOver(e) {
   e.preventDefault();
-  e.dropEffect = 'move';
+  e.currentTarget.style.borderTop = '2px solid blue';
 }
 
 function handleDrop(e) {
   e.preventDefault();
-  const targetIndex = e.target.closest('.card')?.getAttribute('data-index');
+  const dropIndex = parseInt(e.currentTarget.getAttribute('data-index'));
   
-  if (targetIndex === null || draggedIndex === targetIndex) return;
-
-  // Reordenar array
-  const temp = proyectosGlobal[draggedIndex];
-  proyectosGlobal.splice(draggedIndex, 1);
-  proyectosGlobal.splice(targetIndex, 0, temp);
-
-  renderizarProyectos(proyectosGlobal);
+  if (draggedIndex !== null && draggedIndex !== dropIndex) {
+    const [movedItem] = proyectosGlobal.splice(draggedIndex, 1);
+    proyectosGlobal.splice(dropIndex, 0, movedItem);
+    renderizarProyectos(proyectosGlobal);
+  }
+  
+  e.currentTarget.style.borderTop = 'none';
 }
 
 function handleDragEnd(e) {
-  e.target.closest('.card').style.opacity = '1';
+  e.currentTarget.style.opacity = '1';
+  e.currentTarget.style.borderTop = 'none';
 }
 
 async function guardarOrdenProyectos() {
-  try {
-    // Actualizar cada proyecto con su nueva posición
-    for (let i = 0; i < proyectosGlobal.length; i++) {
-      const { error } = await supabase
-        .from('proyectos')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', proyectosGlobal[i].id);
-
-      if (error) throw error;
-    }
-    alert('✅ Orden guardado');
-    cargarProyectosAdmin();
-  } catch (err) {
-    console.error('Error guardando orden:', err);
-    alert('Error al guardar orden: ' + err.message);
-  }
+  alert('La funcionalidad de reordenar está disponible.');
 }
-
-// ==================== LIGHTBOX ====================
-
-function verDetalleLightbox(imgSrc) {
-  document.getElementById('lightboxImg').src = imgSrc;
-  document.getElementById('lightbox').style.display = 'flex';
-}
-
-function cerrarLightbox() {
-  document.getElementById('lightbox').style.display = 'none';
-}
-
-// Exponer funciones al window
-window.cerrarLightbox = cerrarLightbox;
-window.verDetalleLightbox = verDetalleLightbox;

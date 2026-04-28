@@ -1,63 +1,81 @@
+import { supabase } from './supabaseClient.js';
+
 async function cargarDetalleProyecto() {
   const params = new URLSearchParams(window.location.search);
-  const id = parseInt(params.get('id'));
+  const id = Number(params.get('id'));
 
   if (!id) {
-    alert('ID de proyecto no proporcionado');
+    document.getElementById('titulo').innerText = 'Proyecto no encontrado';
     return;
   }
 
   try {
-    const res = await fetch('/data/proyectos.json');
-    const proyectos = await res.json();
-    const proyecto = proyectos.find(p => p.id === id);
+    const { data: proyecto, error } = await supabase
+      .from('proyectos')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
 
     if (!proyecto) {
       document.getElementById('titulo').innerText = 'Proyecto no encontrado';
       return;
     }
 
-    document.getElementById('titulo').innerText = proyecto.descripcion;
-    document.getElementById('descripcionLarga').innerText = proyecto.descripcionLarga || '';
+    document.getElementById('titulo').innerText = proyecto.descripcion || 'Proyecto';
+    document.getElementById('descripcionLarga').innerText = proyecto.descripcion_larga || '';
 
     const galeria = document.getElementById('galeria');
     galeria.innerHTML = '';
 
-    proyecto.imagenes.forEach(url => {
-      // Corregir si no empieza con `/` ni con `http`
-      if (!url.startsWith('http') && !url.startsWith('/')) {
-        url = '/' + url;
-      }
+    const imagenes = Array.isArray(proyecto.imagenes) ? proyecto.imagenes : [];
+    if (imagenes.length === 0) {
+      galeria.innerHTML = '<p>Este proyecto no tiene imágenes.</p>';
+      return;
+    }
 
+    imagenes.forEach((url) => {
       const img = document.createElement('img');
       img.src = url;
-      img.alt = "Imagen del proyecto";
+      img.alt = 'Imagen del proyecto';
       img.onclick = () => mostrarLightbox(url);
       galeria.appendChild(img);
     });
-
   } catch (err) {
     console.error('Error al cargar proyecto:', err);
+    document.getElementById('titulo').innerText = 'Error al cargar el proyecto';
   }
 }
 
+function mostrarLightbox(url) {
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightbox-img');
+  lightboxImg.src = url;
+  lightbox.style.display = 'flex';
+}
 
-    function mostrarLightbox(url) {
-      const lightbox = document.getElementById('lightbox');
-      const lightboxImg = document.getElementById('lightbox-img');
-      lightboxImg.src = url;
-      lightbox.style.display = 'flex';
-    }
+function cerrarLightbox() {
+  document.getElementById('lightbox').style.display = 'none';
+}
 
-    function cerrarLightbox() {
-      document.getElementById('lightbox').style.display = 'none';
-    }
+document.addEventListener('DOMContentLoaded', () => {
+  cargarDetalleProyecto();
 
-    function cerrarLightboxSiClickFuera(event) {
-      const img = document.getElementById('lightbox-img');
-      if (!img.contains(event.target)) {
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightbox-img');
+
+  if (lightbox) {
+    lightbox.addEventListener('click', (event) => {
+      if (event.target === lightbox) {
         cerrarLightbox();
       }
-    }
+    });
+  }
 
-    window.onload = cargarDetalleProyecto;
+  if (lightboxImg) {
+    lightboxImg.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+  }
+});
